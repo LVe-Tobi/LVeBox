@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: nexusmail
+    runtime: php
+    buildCommand: ""
+    startCommand: "php -S 0.0.0.0:10000 -t ."
+    envVars:
+      - key: DB_HOST
+        value: mysql-1139dde-lvetobitella-58eb.l.aivencloud.com  # Remplacez par votre host Aiven
+      - key: DB_PORT
+        value: "12166"  # Votre port Aiven
+      - key: DB_NAME
+        value: defaultdb
+      - key: DB_USER
+        value: avnadmin
+      - key: DB_PASS
+        value: AVNS_ujl7q2RmHYQJPG7jQrq  # Votre mot de passe

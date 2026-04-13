@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - NexusMail</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+        }
+        .header {
+            background: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .logout-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .nav {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .nav button {
+            padding: 10px 20px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .nav button:hover {
+            background: #667eea;
+            color: white;
+        }
+        .content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            min-height: 400px;
+        }
+        .message-item {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .message-item:hover {
+            background: #f7fafc;
+        }
+        .message-item.unread {
+            background: #ebf8ff;
+            border-left: 4px solid #667eea;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .spinner {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        .back-btn {
+            background: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">📧 NexusMail</div>
+        <button class="logout-btn" onclick="logout()">Déconnexion</button>
+    </div>
+    
+    <div class="container">
+        <div class="nav">
+            <button onclick="loadMessages('inbox')">📥 Boîte de réception</button>
+            <button onclick="loadMessages('sent')">📤 Messages envoyés</button>
+            <button onclick="showNewMessage()">✏️ Nouveau message</button>
+        </div>
+        
+        <div class="content" id="contentArea">
+            <div class="spinner">Chargement...</div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        
+        // Vérifier la session
+        async function checkSession() {
+            try {
+                const res = await fetch('backend.php?action=check_session');
+                const data = await res.json();
+                
+                if (!data.success) {
+                    window.location.href = 'login.html';
+                } else {
+                    currentUser = data.data;
+                    loadMessages('inbox');
+                }
+            } catch(e) {
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Charger les messages
+        async function loadMessages(type) {
+            const content = document.getElementById('contentArea');
+            content.innerHTML = '<div class="spinner">Chargement...</div>';
+            
+            try {
+                const res = await fetch(`backend.php?action=get_messages&type=${type}`);
+                const data = await res.json();
+                
+                if (data.success && data.data.length > 0) {
+                    let html = '';
+                    for (const msg of data.data) {
+                        const date = new Date(msg.created_at).toLocaleString();
+                        const other = type === 'inbox' ? msg.sender_name : msg.receiver_name;
+                        const unread = !msg.is_read && type === 'inbox';
+                        
+                        html += `
+                            <div class="message-item ${unread ? 'unread' : ''}" onclick="viewMessage(${msg.id})">
+                                <strong>${other}</strong> - ${date}<br>
+                                <strong>Sujet:</strong> ${msg.subject || 'Sans sujet'}<br>
+                                <small>${msg.content.substring(0, 100)}...</small>
+                            </div>
+                        `;
+                    }
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<p>Aucun message à afficher.</p>';
+                }
+            } catch(e) {
+                content.innerHTML = '<p>Erreur de chargement.</p>';
+            }
+        }
+        
+        // Voir un message
+        async function viewMessage(id) {
+            const content = document.getElementById('contentArea');
+            content.innerHTML = '<div class="spinner">Chargement...</div>';
+            
+            try {
+                const res = await fetch(`backend.php?action=read_message&id=${id}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    const msg = data.data;
+                    const date = new Date(msg.created_at).toLocaleString();
+                    
+                    content.innerHTML = `
+                        <h3>${msg.subject || 'Sans sujet'}</h3>
+                        <p><strong>De :</strong> ${msg.sender_name}</p>
+                        <p><strong>À :</strong> ${msg.receiver_name}</p>
+                        <p><strong>Date :</strong> ${date}</p>
+                        <hr>
+                        <div style="margin: 20px 0;">${msg.content.replace(/\n/g, '<br>')}</div>
+                        <button class="btn back-btn" onclick="loadMessages('inbox')">← Retour</button>
+                    `;
+                }
+            } catch(e) {
+                content.innerHTML = '<p>Erreur de chargement.</p>';
+            }
+        }
+        
+        // Nouveau message
+        async function showNewMessage() {
+            // Récupérer les utilisateurs
+            const res = await fetch('backend.php?action=get_users');
+            const data = await res.json();
+            
+            let usersHtml = '<option value="">Sélectionner...</option>';
+            if (data.success) {
+                data.data.forEach(u => {
+                    usersHtml += `<option value="${u.username}">${u.username}</option>`;
+                });
+            }
+            
+            const content = document.getElementById('contentArea');
+            content.innerHTML = `
+                <h3>✏️ Nouveau message</h3>
+                <form id="messageForm">
+                    <div class="form-group">
+                        <label>Destinataire</label>
+                        <select id="to_username" required>${usersHtml}</select>
+                    </div>
+                    <div class="form-group">
+                        <label>Sujet</label>
+                        <input type="text" id="subject">
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea id="content" rows="6" required></textarea>
+                    </div>
+                    <button type="submit" class="btn">Envoyer</button>
+                    <button type="button" class="btn back-btn" onclick="loadMessages('inbox')">Annuler</button>
+                </form>
+                <div id="msgResult" style="margin-top: 15px;"></div>
+            `;
+            
+            document.getElementById('messageForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const to = document.getElementById('to_username').value;
+                const subject = document.getElementById('subject').value;
+                const content = document.getElementById('content').value;
+                
+                const sendRes = await fetch('backend.php?action=send_message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to_username: to,
+                        subject: subject,
+                        content: content,
+                        attachments: []
+                    })
+                });
+                
+                const sendData = await sendRes.json();
+                const resultDiv = document.getElementById('msgResult');
+                
+                if (sendData.success) {
+                    resultDiv.innerHTML = '<div style="color: green;">✅ Message envoyé !</div>';
+                    setTimeout(() => loadMessages('sent'), 1500);
+                } else {
+                    resultDiv.innerHTML = '<div style="color: red;">❌ ' + sendData.message + '</div>';
+                }
+            });
+        }
+        
+        // Déconnexion
+        async function logout() {
+            await fetch('backend.php?action=logout');
+            window.location.href = 'login.html';
+        }
+        
+        // Démarrer
+        checkSession();
+    </script>
+</body>
+</html>

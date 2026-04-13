@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API NexusMail</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: white; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test API NexusMail</h1>
+    
+    <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <h2>📝 Inscription</h2>
+        <input type="text" id="regUsername" placeholder="Nom d'utilisateur"><br>
+        <input type="email" id="regEmail" placeholder="Email"><br>
+        <input type="password" id="regPassword" placeholder="Mot de passe"><br>
+        <input type="password" id="regConfirm" placeholder="Confirmer"><br>
+        <button onclick="testRegister()">Tester l'inscription</button>
+        <div id="regResult"></div>
+    </div>
+    
+    <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <h2>🔑 Connexion</h2>
+        <input type="text" id="loginUsername" placeholder="Nom d'utilisateur"><br>
+        <input type="password" id="loginPassword" placeholder="Mot de passe"><br>
+        <button onclick="testLogin()">Tester la connexion</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div style="background: white; padding: 20px; border-radius: 10px;">
+        <h2>📡 Dernière réponse brute</h2>
+        <pre id="rawResponse">Aucune requête effectuée</pre>
+    </div>
+    
+    <script>
+        async function testRegister() {
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const confirm = document.getElementById('regConfirm').value;
+            
+            if (!username || !email || !password) {
+                document.getElementById('regResult').innerHTML = '<p class="error">❌ Remplissez tous les champs</p>';
+                return;
+            }
+            
+            if (password !== confirm) {
+                document.getElementById('regResult').innerHTML = '<p class="error">❌ Les mots de passe ne correspondent pas</p>';
+                return;
+            }
+            
+            const data = { username, email, password, confirm_password: confirm };
+            
+            try {
+                const response = await fetch('backend.php?action=register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const raw = await response.text();
+                document.getElementById('rawResponse').textContent = raw;
+                
+                let result;
+                try {
+                    result = JSON.parse(raw);
+                } catch(e) {
+                    document.getElementById('regResult').innerHTML = '<p class="error">❌ Réponse non JSON: ' + raw.substring(0, 200) + '</p>';
+                    return;
+                }
+                
+                if (result.success) {
+                    document.getElementById('regResult').innerHTML = '<p class="success">✅ ' + result.message + '</p>';
+                } else {
+                    document.getElementById('regResult').innerHTML = '<p class="error">❌ ' + result.message + '</p>';
+                }
+            } catch(error) {
+                document.getElementById('regResult').innerHTML = '<p class="error">❌ Erreur: ' + error.message + '</p>';
+            }
+        }
+        
+        async function testLogin() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!username || !password) {
+                document.getElementById('loginResult').innerHTML = '<p class="error">❌ Remplissez tous les champs</p>';
+                return;
+            }
+            
+            const data = { username, password };
+            
+            try {
+                const response = await fetch('backend.php?action=login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const raw = await response.text();
+                document.getElementById('rawResponse').textContent = raw;
+                
+                let result;
+                try {
+                    result = JSON.parse(raw);
+                } catch(e) {
+                    document.getElementById('loginResult').innerHTML = '<p class="error">❌ Réponse non JSON: ' + raw.substring(0, 200) + '</p>';
+                    return;
+                }
+                
+                if (result.success) {
+                    document.getElementById('loginResult').innerHTML = '<p class="success">✅ ' + result.message + '<br>👤 Utilisateur: ' + (result.data?.username || 'OK') + '</p>';
+                } else {
+                    document.getElementById('loginResult').innerHTML = '<p class="error">❌ ' + result.message + '</p>';
+                }
+            } catch(error) {
+                document.getElementById('loginResult').innerHTML = '<p class="error">❌ Erreur: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>
